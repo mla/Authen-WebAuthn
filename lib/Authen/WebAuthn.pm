@@ -941,8 +941,12 @@ sub getAttestationObject {
     my ($dat)   = @_;
     my $decoded = decode_base64url($dat);
     my $res     = {};
-    my $h = _require_map( _decode_cbor($decoded), "Attestation object" );
-    _require_bytes( $h->{fmt},      "Attestation statement format" );
+    my $h       = _require_map( _decode_cbor($decoded), "Attestation object" );
+    _require_bytes( $h->{fmt}, "Attestation statement format" );
+
+    # A text string, which CBOR::XS decodes as a character string
+    croak("Attestation statement format is not a text string")
+      unless utf8::is_utf8( $h->{fmt} );
     _require_bytes( $h->{authData}, "Authenticator data" );
     _require_map( $h->{attStmt}, "Attestation statement" );
     $res->{authData}    = getAuthData( $h->{authData} );
