@@ -1099,8 +1099,9 @@ sub attest_packed_check_cert_requirements {
       "Authenticator Attestation";
 
     # The Basic Constraints extension MUST have the CA component set to false.
-    my $isCa = $x5c->extensions_by_oid->{"2.5.29.19"}->basicC("ca");
-    croak "Basic Constraints CA is true" if $isCa;
+    my $basic_constraints = $x5c->extensions_by_oid->{"2.5.29.19"};
+    croak "Missing Basic Constraints extension" unless $basic_constraints;
+    croak "Basic Constraints CA is true" if $basic_constraints->basicC("ca");
 
     return;
 }
