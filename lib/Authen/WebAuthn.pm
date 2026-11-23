@@ -459,8 +459,8 @@ sub validate_assertion {
     return { success => 1, signature_count => $signature_count, };
 }
 
-# Everything decoded here was sent by the client, so it is decoded here
-# rather than by CBOR::XS, which expands string references (tags 25 and
+# Everything decoded here was sent by a client, the stored credential key
+# included, so it is decoded here rather than by CBOR::XS, which expands string references (tags 25 and
 # 256) and shared values whatever its options say: a few bytes become
 # gigabytes. WebAuthn uses CTAP2's subset of CBOR: integers, byte and text
 # strings, arrays, maps, booleans and null, with definite lengths.

@@ -224,6 +224,12 @@ The base64url-encoded challenge that was submitted to the authenticator
 
 The base64url-encoded credential public key corresponding to the received Credential ID
 
+It is the C<credential_pubkey> that C<validate_registration> returned, which is
+the key exactly as the authenticator encoded it. A key the Relying Party
+encoded itself must be CBOR of the same form: integers for the map labels and
+for the key type, algorithm and curve, and definite lengths. A key encoded from
+a Perl hash with CBOR::XS, which writes the labels as strings, is refused.
+
 =item stored_sign_count
 
 The current signature count in the Relying Party's database. Set it to 0 to

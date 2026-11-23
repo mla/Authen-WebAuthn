@@ -7,6 +7,11 @@ Unreleased
     uses, in time and memory bounded by the size of the input: tags
     (which could instantiate Perl objects or expand to gigabytes), floats,
     indefinite lengths and duplicate map keys are refused
+  - The stored credential public key given to validate_assertion is read
+    by the same decoder, so it must be CBOR as an authenticator writes it,
+    which the credential_pubkey returned by validate_registration is. A
+    key encoded from a Perl hash with CBOR::XS, whose map labels are
+    strings, is refused.
   - At registration, reject a credential public key that does not parse,
     whose key type does not match its algorithm, or an RSA key outside
     2048 to 4096 bits or with an exponent over 32 bytes. A stored RSA key
