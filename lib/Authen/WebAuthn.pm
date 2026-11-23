@@ -9,7 +9,6 @@ use Digest::SHA qw(sha256);
 use Crypt::PK::ECC;
 use Crypt::PK::RSA;
 use Crypt::OpenSSL::X509 1.808;
-use CBOR::XS 1.6      ();
 use B                 ();
 use Encode            ();
 use Types::Serialiser ();
@@ -270,7 +269,7 @@ sub validate_registration {
 }
 
 # COSE key type for each key type (RFC 8152, section 13)
-my $COSE_KTY = { OKP => 1, ECC => 2, RSA => 3 };
+my $COSE_KTY = { ECC => 2, RSA => 3 };
 
 my $MIN_RSA_BITS = 2048;
 my $MAX_RSA_BITS = 4096;
@@ -615,7 +614,7 @@ sub _decode_client_data {
     unless ( ref($client_data) eq "HASH" ) {
         croak("Client data is not a JSON object");
     }
-    for my $member (qw(type challenge origin topOrigin)) {
+    for my $member (qw(type challenge origin)) {
         if ( ref $client_data->{$member} ) {
             croak("Client data member $member is not a string");
         }

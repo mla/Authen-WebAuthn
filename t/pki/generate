@@ -17,10 +17,9 @@ subject="/C=US/O=Authen-WebAuthn Tests/OU=Authenticator Attestation"
 
 key() {
     case "$2" in
-        p256)    openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 ;;
-        p384)    openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-384 ;;
-        rsa)     openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 ;;
-        ed25519) openssl genpkey -algorithm ED25519 ;;
+        p256) openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 ;;
+        p384) openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-384 ;;
+        rsa)  openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 ;;
     esac >"$1-key.pem" 2>/dev/null
 }
 
@@ -47,11 +46,10 @@ openssl req -x509 -new -key root-key.pem -days $days \
 cert intermediate p256 "/C=US/O=Authen-WebAuthn Tests/CN=Test Intermediate" \
     root "$ca"
 
-cert packed-p256    p256    "$subject/CN=Packed P-256"    root "$leaf"
-cert packed-p384    p384    "$subject/CN=Packed P-384"    root "$leaf"
-cert packed-rsa     rsa     "$subject/CN=Packed RSA"      root "$leaf"
-cert packed-ed25519 ed25519 "$subject/CN=Packed Ed25519"  root "$leaf"
-cert packed-chained p256    "$subject/CN=Packed Chained"  intermediate "$leaf"
+cert packed-p256    p256 "$subject/CN=Packed P-256"   root "$leaf"
+cert packed-p384    p384 "$subject/CN=Packed P-384"   root "$leaf"
+cert packed-rsa     rsa  "$subject/CN=Packed RSA"     root "$leaf"
+cert packed-chained p256 "$subject/CN=Packed Chained" intermediate "$leaf"
 
 # id-fido-gen-ce-aaguid for 01020304-0506-0708-090a-0b0c0d0e0f10
 cert packed-aaguid p256 "$subject/CN=Packed AAGUID" root "$leaf

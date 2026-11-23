@@ -6,7 +6,6 @@ use MIME::Base64 qw(encode_base64url decode_base64url);
 use Digest::SHA qw(sha256);
 use Crypt::PK::ECC;
 use Crypt::PK::RSA;
-use Crypt::PK::Ed25519;
 use Crypt::OpenSSL::X509;
 use Hash::Merge::Simple qw/merge/;
 use JSON qw(encode_json decode_json);
@@ -32,11 +31,11 @@ has attestation_format => ( is => 'rw', default => 'none' );
 has attestation_key          => ( is => 'rw' );
 has attestation_certificates => ( is => 'rw' );
 
-# ECDSA curve name => COSE curve, algorithm and hash
+# ECDSA curve name => COSE algorithm and hash. P-384 is for attestation keys
+# the module must refuse.
 my %EC_CURVES = (
-    secp256r1 => { crv => 1, alg => -7,  hash => 'SHA256', size => 32 },
-    secp384r1 => { crv => 2, alg => -35, hash => 'SHA384', size => 48 },
-    secp521r1 => { crv => 3, alg => -36, hash => 'SHA512', size => 66 },
+    secp256r1 => { alg => -7,  hash => 'SHA256' },
+    secp384r1 => { alg => -35, hash => 'SHA384' },
 );
 
 my %RSA_SIGNATURES = (
@@ -162,7 +161,7 @@ sub encode_credential {
 # A PEM key, as a CryptX object of whichever type it holds
 sub _read_key {
     my ($pem) = @_;
-    for my $class (qw(Crypt::PK::ECC Crypt::PK::RSA Crypt::PK::Ed25519)) {
+    for my $class (qw(Crypt::PK::ECC Crypt::PK::RSA)) {
         my $pk = eval { $class->new( \$pem ) };
         return $pk if $pk;
     }
@@ -176,7 +175,6 @@ sub _build_alg { _alg_for( $_[0]->_pk ) }
 sub _alg_for {
     my ($pk) = @_;
     return -257 if $pk->isa('Crypt::PK::RSA');
-    return -8   if $pk->isa('Crypt::PK::Ed25519');
     my $curve = $EC_CURVES{ $pk->key2hash->{curve_name} }
       or die "Unsupported curve " . $pk->key2hash->{curve_name};
     return $curve->{alg};
@@ -250,14 +248,6 @@ sub encode_cosekey {
     my $pk  = $self->_pk;
     my $alg = $self->alg;
 
-    if ( $pk->isa('Crypt::PK::Ed25519') ) {
-        return _cose_key(
-            1  => _cbor_int(1),                               # kty OKP
-            3  => _cbor_int($alg),
-            -1 => _cbor_int(6),                               # Ed25519
-            -2 => _cbor_bytes( $pk->export_key_raw('public') ),
-        );
-    }
     if ( $pk->isa('Crypt::PK::RSA') ) {
         my $hash = $pk->key2hash;
         return _cose_key(
@@ -268,22 +258,7 @@ sub encode_cosekey {
         );
     }
 
-    my $hash  = $pk->key2hash;
-    my $curve = $EC_CURVES{ $hash->{curve_name} };
-
-    # Same bytes as earlier versions for P-256
-    return Authen::WebAuthn::_ecc_obj_to_cose($pk) if $curve->{crv} == 1;
-
-    my $coordinate = sub {
-        pack( 'H*', sprintf( '%0*s', $curve->{size} * 2, shift ) );
-    };
-    return _cose_key(
-        1  => _cbor_int(2),                                   # kty EC2
-        3  => _cbor_int($alg),
-        -1 => _cbor_int( $curve->{crv} ),
-        -2 => _cbor_bytes( $coordinate->( $hash->{pub_x} ) ),
-        -3 => _cbor_bytes( $coordinate->( $hash->{pub_y} ) ),
-    );
+    return Authen::WebAuthn::_ecc_obj_to_cose($pk);
 }
 
 sub sign {
@@ -294,7 +269,6 @@ sub sign {
 sub _sign_with {
     my ( $pk, $alg, $message ) = @_;
 
-    return $pk->sign_message($message) if $pk->isa('Crypt::PK::Ed25519');
     if ( $pk->isa('Crypt::PK::RSA') ) {
         my $options = $RSA_SIGNATURES{$alg}
           or die "Unsupported RSA algorithm $alg";

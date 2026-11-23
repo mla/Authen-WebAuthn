@@ -1,6 +1,5 @@
 use Test::More;
 use Crypt::PK::ECC;
-use Crypt::PK::Ed25519;
 use Crypt::PK::RSA;
 use MIME::Base64 qw(encode_base64url);
 use strict;
@@ -25,12 +24,6 @@ sub ecc_pem {
 sub rsa_pem {
     my $key = Crypt::PK::RSA->new;
     $key->generate_key( 256, 65537 );
-    return $key->export_key_pem('private');
-}
-
-sub ed25519_pem {
-    my $key = Crypt::PK::Ed25519->new;
-    $key->generate_key;
     return $key->export_key_pem('private');
 }
 
