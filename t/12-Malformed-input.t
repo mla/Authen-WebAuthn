@@ -132,6 +132,7 @@ sub authenticate_raw {
             ),
             signature_b64 =>
               encode_base64url( $assertion->{response}->{signature} ),
+            %{ $parts{options} || {} },
         );
     };
 }
@@ -289,6 +290,40 @@ subtest "Corrupted responses" => sub {
 
     is_deeply( \@raw_errors, [], "Every refusal has its own message" );
     ok( !$altered_accepted, "No altered authenticator data is accepted" );
+};
+
+subtest "Token binding without a status" => sub {
+    my $with_binding = sub {
+        my ($json) = @_;
+        return encode_json( { %{ decode_json($json) }, tokenBinding => {} } );
+    };
+    ok(
+        register_raw(
+            client_data => $with_binding->( $registration->{clientDataJSON} )
+        ),
+        "Registration"
+    ) or diag($@);
+    refused(
+        authenticate_raw(
+            client_data =>
+              $with_binding->( $assertion->{response}->{clientDataJSON} )
+        ),
+        $@,
+        qr/signature was not valid/,
+        "Authentication reaches the signature, made without it"
+    );
+    is_deeply( \@warnings, [], "... without warnings" );
+};
+
+subtest "extension_results that is not a hash" => sub {
+    for my $value ( "x", [] ) {
+        refused(
+            authenticate_raw( options => { extension_results => $value } ),
+            $@,
+            qr/^extension_results must be a HASH reference/,
+            ref($value) || "A string"
+        );
+    }
 };
 
 # The flag says a CBOR map of extension outputs follows

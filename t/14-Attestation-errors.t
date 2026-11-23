@@ -118,6 +118,32 @@ subtest "FIDO U2F attestation" => sub {
         "A wrong signature is refused"
     );
     like( $@, qr/Signature verification failed/, "With the expected message" );
+
+    ok(
+        !register(
+            with_statement( \%u2f, sub { $_[0]->{sig} = "\x{263a}" x 70 } ),
+            trust_anchors => [$main::yubico_u2f_root],
+        ),
+        "A signature that is a text string is refused"
+    );
+    like(
+        $@,
+        qr/Attestation statement signature is not a byte string/,
+        "With the expected message"
+    );
+
+    my @warnings;
+    local $SIG{__WARN__} = sub { push @warnings, @_ };
+    ok(
+        !register(
+            with_statement( \%u2f, sub { push @{ $_[0]->{x5c} }, undef } ),
+            trust_anchors => [$main::yubico_u2f_root],
+        ),
+        "A certificate that is null is refused"
+    );
+    like( $@, qr/Invalid certificate field in attestation statement/,
+        "With the expected message" );
+    is_deeply( \@warnings, [], "... and no warnings" );
 };
 
 done_testing();

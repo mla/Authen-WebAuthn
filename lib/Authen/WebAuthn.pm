@@ -398,7 +398,9 @@ sub validate_assertion {
     # § 10.1 FIDO AppID Extension (appid) for details.
 
     my $hash_rp_id;
-    if ( $extension_results->{appid} ) {
+    croak("extension_results must be a HASH reference")
+      if defined $extension_results and ref($extension_results) ne "HASH";
+    if ( $extension_results and $extension_results->{appid} ) {
         $hash_rp_id = sha256( $self->origin );
     }
     else {
@@ -699,7 +701,7 @@ sub check_token_binding {
 
     my $token_binding_status = $client_data_token_binding->{status};
 
-    if ( $token_binding_status eq "present" ) {
+    if ( ( $token_binding_status // "" ) eq "present" ) {
         my $client_data_cbid_b64 = $client_data_token_binding->{id};
 
         # Token binding is in use: the "id" field must be present and must
@@ -1338,6 +1340,8 @@ sub attest_u2f {
    # and perform CBOR decoding on it to extract the contained fields.
     croak "Missing signature field in attestation statement"
       unless ( $attestation_statement->{sig} );
+    _require_bytes( $attestation_statement->{sig},
+        "Attestation statement signature" );
 
     my $sig = $attestation_statement->{sig};
 
@@ -1351,6 +1355,11 @@ sub attest_u2f {
         and $attestation_statement->{x5c}->[0] )
     {
         croak "Missing certificate field in attestation statement";
+    }
+    if ( grep { !defined $_ or ref $_ or utf8::is_utf8($_) }
+        @{ $attestation_statement->{x5c} } )
+    {
+        croak "Invalid certificate field in attestation statement";
     }
 
     my $x5c_der         = $attestation_statement->{x5c}->[0];
