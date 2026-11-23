@@ -467,6 +467,10 @@ sub validate_assertion {
 # definite lengths.
 my $CBOR_MAX_DEPTH = 16;
 
+# Each decoded item costs about 100 bytes of memory however small it is.
+# Real attestation objects hold a few dozen.
+my $CBOR_MAX_ITEMS = 10_000;
+
 sub _decode_cbor {
     my ($cbor_raw) = @_;
     my ( $value, $length ) = _decode_cbor_prefix($cbor_raw);
@@ -479,7 +483,8 @@ sub _decode_cbor_prefix {
     my ($cbor_raw) = @_;
     _require_bytes( $cbor_raw, "CBOR data" );
     my $offset = 0;
-    my $value  = _cbor_item( \$cbor_raw, \$offset, 0 );
+    my $items  = 0;
+    my $value  = _cbor_item( \$cbor_raw, \$offset, 0, \$items );
     return ( $value, $offset );
 }
 
@@ -493,7 +498,7 @@ sub _cbor_take {
 }
 
 sub _cbor_item {
-    my ( $data, $offset, $depth ) = @_;
+    my ( $data, $offset, $depth, $items ) = @_;
     croak("CBOR data is nested too deeply") if $depth > $CBOR_MAX_DEPTH;
 
     my $initial = ord _cbor_take( $data, $offset, 1 );
@@ -548,8 +553,10 @@ sub _cbor_item {
     # before looping over it
     croak("CBOR data is truncated")
       if $argument > length($$data) - $$offset;
+    $$items += $major == 4 ? $argument : 2 * $argument;
+    croak("CBOR data has too many items") if $$items > $CBOR_MAX_ITEMS;
     if ( $major == 4 ) {
-        return [ map { _cbor_item( $data, $offset, $depth + 1 ) }
+        return [ map { _cbor_item( $data, $offset, $depth + 1, $items ) }
               1 .. $argument ];
     }
 
@@ -559,12 +566,12 @@ sub _cbor_item {
         # Integer and text keys only, and since Perl hash keys are strings,
         # no text key that reads as an integer: "3" would be the label 3
         my $key_major = ord( substr( $$data, $$offset, 1 ) ) >> 5;
-        my $key       = _cbor_item( $data, $offset, $depth + 1 );
+        my $key       = _cbor_item( $data, $offset, $depth + 1, $items );
         croak("Unsupported CBOR map key")
           unless $key_major <= 1
           or ( $key_major == 3 and $key !~ /^-?[0-9]+\z/ );
         croak("Duplicate CBOR map key $key") if exists $map{$key};
-        $map{$key} = _cbor_item( $data, $offset, $depth + 1 );
+        $map{$key} = _cbor_item( $data, $offset, $depth + 1, $items );
     }
     return \%map;
 }

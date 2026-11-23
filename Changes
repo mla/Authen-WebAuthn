@@ -4,9 +4,10 @@ Unreleased
   - Fix PS256 signature verification (32 byte salt)
   - Fix trust_anchors given as a code reference
   - Decode client-supplied CBOR with a decoder for the subset WebAuthn
-    uses, in time and memory bounded by the size of the input: tags
-    (which could instantiate Perl objects or expand to gigabytes), floats,
-    indefinite lengths and duplicate map keys are refused
+    uses: tags (which could instantiate Perl objects or expand to
+    gigabytes), floats, indefinite lengths and duplicate map keys are
+    refused, as is data holding more than 10,000 items or nested more
+    than 16 deep, which bounds the memory a response can take
   - The stored credential public key given to validate_assertion is read
     by the same decoder, so it must be CBOR as an authenticator writes it,
     which the credential_pubkey returned by validate_registration is. A

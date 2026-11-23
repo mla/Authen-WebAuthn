@@ -224,6 +224,16 @@ subtest "Decoder" => sub {
         ok( !eval { $decode->($hex); 1 }, $name );
         like( $@, $message, "... with the expected message" );
     }
+
+    # Memory is bounded by the number of items, whatever the input's size
+    my $array = sub { "9a" . unpack( "H*", pack "N", $_[0] ) . "00" x $_[0] };
+    is( scalar @{ $decode->( $array->(10_000) ) },
+        10_000, "An array of 10,000 items" );
+    ok( !eval { $decode->( $array->(10_001) ); 1 }, "One more is refused" );
+    like( $@, qr/CBOR data has too many items/, "... with the expected message" );
+    ok( !eval { $decode->( "98c8" . ( "98c8" . "00" x 200 ) x 200 ); 1 },
+        "The limit counts nested items" );
+    like( $@, qr/CBOR data has too many items/, "... with the expected message" );
     ok( eval { $decode->( "81" x 16 . "00" ); 1 }, "Nesting at the limit" );
 };
 
