@@ -809,8 +809,8 @@ sub _getU2FKeyFromCose {
     $cose_key = _decode_cose_key($cose_key);
 
     # TODO: do we need to support more algs?
-    croak( "Unexpected COSE Alg: " . $cose_key->{3} )
-      unless ( $COSE_ALG->{ $cose_key->{3} }->{name} eq "ES256" );
+    croak( "Unexpected COSE Alg: " . ( $cose_key->{3} // "(none)" ) )
+      unless ( $cose_key->{3} // "" ) eq "-7";
 
     my $pk = parse_ecc_cose($cose_key);
     return $pk->export_key_raw('public');
@@ -1276,8 +1276,13 @@ sub attest_packed_self {
     # authenticatorData.
     my $cose_alg =
       $authenticator_data->{attestedCredentialData}->{credentialPublicKeyAlg};
-    my $sign_alg = $COSE_ALG->{$sign_alg_num}->{name};
-    croak "Unknown key type in attestation data: $sign_alg_num"
+    my $sign_alg =
+      defined $sign_alg_num
+      && !ref $sign_alg_num
+      && $COSE_ALG->{$sign_alg_num}
+      && $COSE_ALG->{$sign_alg_num}->{name};
+    croak "Unknown key type in attestation data: "
+      . ( $sign_alg_num // "(none)" )
       unless ($sign_alg);
 
     unless ( $sign_alg eq $cose_alg ) {

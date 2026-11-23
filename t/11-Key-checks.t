@@ -269,4 +269,51 @@ subtest "Stored keys over the registration limit" => sub {
     like( $@, qr/too long \(max: 16384\)/, "... with the expected message" );
 };
 
+# A lookup of an algorithm a client names must not add it to the table of
+# supported algorithms
+subtest "Unknown algorithms stay unknown" => sub {
+    my $unknown = Authen::WebAuthn::Test::_canonical_cbor(
+        { 1 => 2, 3 => -4242, -1 => 1, -2 => "\x01" x 32, -3 => "\x02" x 32 }
+    );
+    my $unsupported = sub {
+        eval { Authen::WebAuthn::getPubKeyVerifier($unknown) };
+        return $@;
+    };
+    like( $unsupported->(), qr/^Unsupported algorithm -4242/, "Before" );
+
+    my $self_attested = Authen::WebAuthn::Test->new(
+        origin             => "http://auth.example.com",
+        rp_id              => "auth.example.com",
+        credential_id      => "self-attested",
+        aaguid             => "00000000-0000-0000-0000-000000000000",
+        key                => $ecdsa_key,
+        attestation_format => "packed",
+    );
+    my $credential = $self_attested->get_credential_response(
+        { request => { challenge => "abc" } },
+        {
+            response => {
+                attestationObject =>
+                  { attStmt => { alg => -4242, sig => "x" } }
+            }
+        }
+    );
+    ok(
+        !eval {
+            $rp->validate_registration(
+                challenge_b64        => "abc",
+                client_data_json_b64 =>
+                  encode_base64url( $credential->{response}->{clientDataJSON} ),
+                attestation_object_b64 => encode_base64url(
+                    $credential->{response}->{attestationObject}
+                ),
+            );
+        },
+        "Self attestation naming an unknown algorithm is refused"
+    );
+    like( $@, qr/Unknown key type in attestation data: -4242/,
+        "... with the expected message" );
+    like( $unsupported->(), qr/^Unsupported algorithm -4242/, "After" );
+};
+
 done_testing();
