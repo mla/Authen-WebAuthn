@@ -259,6 +259,28 @@ subtest "Corrupted responses" => sub {
     ok( !$altered_accepted, "No altered authenticator data is accepted" );
 };
 
+# The flag says a CBOR map of extension outputs follows
+subtest "Extension data" => sub {
+    my $data = $assertion->{response}->{authenticatorData};
+    substr( $data, 32, 1 ) = chr( ord( substr( $data, 32, 1 ) ) | 0x80 );
+
+    ok( !authenticate_raw( authenticator_data => $data ),
+        "The flag without extension data is refused" );
+    like(
+        $@,
+        qr/^Extension data flag is set but there is no extension data/,
+        "... with the expected message"
+    );
+    ok( !authenticate_raw( authenticator_data => $data . "\x80" ),
+        "Extension data that is an array is refused" );
+    like( $@, qr/^Extension data is not a map/,
+        "... with the expected message" );
+    ok( !authenticate_raw( authenticator_data => $data . "\xa0" ),
+        "An empty map is read" );
+    like( $@, qr/signature was not valid/,
+        "... and the signature, made without it, is then refused" );
+};
+
 is_deeply( \@warnings, [], "No warnings" );
 
 done_testing();

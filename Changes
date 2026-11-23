@@ -21,6 +21,9 @@ Unreleased
   - Malformed input is refused with a message of its own, without Perl
     errors or warnings
   - Reject credential IDs longer than 1023 bytes
+  - Authenticator data whose extension data flag is set must hold
+    extension data, and it must be a CBOR map: a flag with nothing after
+    it, or an array, was accepted before
   - Refuse an attestation format that is not a text string
   - An attestation certificate without Basic Constraints is refused as
     such, not with a Perl error
