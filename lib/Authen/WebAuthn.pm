@@ -768,6 +768,20 @@ sub check_attestation_trust {
     my @trust_chain = @{ $attestation_result->{trust_path} };
     shift @trust_chain;
 
+    # An anchor that does not parse would otherwise fail every chain, or
+    # with allow_untrusted_attestation, quietly make every attestation Self
+    if ( ref($trust_anchors) eq "ARRAY" ) {
+        for my $i ( 0 .. $#$trust_anchors ) {
+            next if eval {
+                Crypt::OpenSSL::X509->new_from_string( $trust_anchors->[$i],
+                    Crypt::OpenSSL::X509::FORMAT_PEM );
+            };
+            my $error = $@;
+            Net::SSLeay::ERR_clear_error();
+            croak("Trust anchor $i is not a PEM certificate: $error");
+        }
+    }
+
     if ( $self->matchCertificateInList( $attn_cert, $trust_anchors ) ) {
         return 1;
     }

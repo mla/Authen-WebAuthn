@@ -3,6 +3,9 @@ Revision history for Authen-WebAuthn
 Unreleased
   - Fix PS256 signature verification (32 byte salt)
   - Fix trust_anchors given as a code reference
+  - A trust anchor that is not a PEM certificate is refused as such. It
+    made every attestation fail, or with allow_untrusted_attestation,
+    made every attestation Self without an error.
   - Decode client-supplied CBOR with a decoder for the subset WebAuthn
     uses: tags (which could instantiate Perl objects or expand to
     gigabytes), floats, indefinite lengths and duplicate map keys are

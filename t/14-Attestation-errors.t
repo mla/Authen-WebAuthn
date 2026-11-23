@@ -69,12 +69,31 @@ subtest "trust_anchors as a code reference" => sub {
 };
 
 subtest "A trust anchor that is not a certificate" => sub {
-    for my $anchors ( ["garbage"], [ $main::yubico_u2f_root, "garbage" ] ) {
-        ok( !register( %packed, trust_anchors => $anchors ),
-            "Registration fails" );
-        like( $@, qr/Could not parse certificate/, "With the expected message" );
-        is( Net::SSLeay::ERR_peek_error(), 0,
-            "OpenSSL's error queue is left empty" );
+    for my $case (
+        [ ["garbage"], 0 ],
+        [ [ $main::yubico_u2f_root, "garbage" ], 1 ],
+        [ [ "garbage", $main::yubico_u2f_root ], 0 ],
+      )
+    {
+        my ( $anchors, $at ) = @$case;
+        for my $untrusted ( 0, 1 ) {
+            ok(
+                !register(
+                    %packed,
+                    trust_anchors               => $anchors,
+                    allow_untrusted_attestation => $untrusted,
+                ),
+                "Registration fails"
+                  . ( $untrusted ? " with allow_untrusted_attestation" : "" )
+            );
+            like(
+                $@,
+                qr/^Trust anchor $at is not a PEM certificate/,
+                "With the expected message"
+            );
+            is( Net::SSLeay::ERR_peek_error(),
+                0, "OpenSSL's error queue is left empty" );
+        }
     }
 };
 
