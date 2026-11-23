@@ -272,6 +272,7 @@ sub validate_registration {
 my $COSE_KTY = { OKP => 1, ECC => 2, RSA => 3 };
 
 my $MIN_RSA_BITS = 2048;
+my $MAX_RSA_BITS = 4096;
 
 sub _check_credential_public_key {
     my ($cose_raw) = @_;
@@ -285,6 +286,13 @@ sub _check_credential_public_key {
     my $kty = $cose_key->{1} // "";
     unless ( $kty eq $COSE_KTY->{ $alg->{key_type} } ) {
         croak("Key type $kty cannot be used with algorithm $alg_num");
+    }
+
+    if ( $alg->{key_type} eq "RSA" ) {
+        my $bits = _rsa_bits(
+            _require_bytes( $cose_key->{-1}, "RSA key modulus" ) );
+        croak("RSA key of $bits bits is too long (max: $MAX_RSA_BITS)")
+          if $bits > $MAX_RSA_BITS;
     }
 
     eval { getPubKeyVerifier($cose_raw) };
@@ -857,9 +865,10 @@ sub parse_rsa_pem {
     return $pk;
 }
 
-# CryptX converts the key in time quadratic in its size, so a client's
-# oversized key is refused before it is read
-my $MAX_RSA_BITS           = 4096;
+# CryptX converts the key in time quadratic in its size, so an oversized key
+# is refused before it is read. This bound is OpenSSL's, and also applies to
+# stored keys at sign-in; registration accepts less ($MAX_RSA_BITS).
+my $MAX_STORED_RSA_BITS    = 16384;
 my $MAX_RSA_EXPONENT_BYTES = 32;
 
 sub _rsa_bits {
@@ -876,8 +885,8 @@ sub parse_rsa_cose {
     s/^\x00+// for $n, $e;
 
     my $bits = _rsa_bits($n);
-    croak("RSA key of $bits bits is too long (max: $MAX_RSA_BITS)")
-      if $bits > $MAX_RSA_BITS;
+    croak("RSA key of $bits bits is too long (max: $MAX_STORED_RSA_BITS)")
+      if $bits > $MAX_STORED_RSA_BITS;
     croak("Invalid RSA key modulus")
       if $bits == 0
       or ord( substr( $n, -1 ) ) % 2 == 0;

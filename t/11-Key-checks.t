@@ -240,4 +240,33 @@ subtest "RSA key sizes" => sub {
     ) or diag($@);
 };
 
+# The size limits are for keys a client offers at registration. A key
+# registered with an earlier version must still sign in.
+subtest "Stored keys over the registration limit" => sub {
+    my $n      = "\xc1" . ( "\x02" x 638 ) . "\x03";    # 5120 bits
+    my $stored = Authen::WebAuthn::Test::_canonical_cbor(
+        { 1 => 3, 3 => -257, -1 => $n, -2 => "\x01\x00\x01" } );
+
+    ok( !register( undef, with_key($stored) ), "Refused at registration" );
+    like(
+        $@,
+        qr/RSA key of 5120 bits is too long \(max: 4096\)/,
+        "... with the expected message"
+    );
+
+    ok( !authenticate( undef, credential_pubkey_b64 => encode_base64url($stored) ),
+        "At sign-in, a signature it did not make is refused" );
+    like( $@, qr/Webauthn signature was not valid/, "... as a bad signature" );
+    unlike( $@, qr/too long/, "... not for the key's size" );
+
+    ok(
+        !eval {
+            Authen::WebAuthn::parse_rsa_cose(
+                { -1 => "\xc1" x 2049, -2 => "\x01\x00\x01" } );
+        },
+        "A stored key over 16384 bits is refused"
+    );
+    like( $@, qr/too long \(max: 16384\)/, "... with the expected message" );
+};
+
 done_testing();
