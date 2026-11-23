@@ -1,5 +1,29 @@
 Revision history for Authen-WebAuthn
  
+Unreleased
+  - Fix PS256 signature verification (32 byte salt)
+  - Fix trust_anchors given as a code reference
+  - Decode client-supplied CBOR with a decoder for the subset WebAuthn
+    uses, in time and memory bounded by the size of the input: tags
+    (which could instantiate Perl objects or expand to gigabytes), floats,
+    indefinite lengths and duplicate map keys are refused
+  - At registration, reject a credential public key that does not parse,
+    whose key type does not match its algorithm, or an RSA key outside
+    2048 to 4096 bits. A stored RSA key is read up to 16384 bits at
+    sign-in.
+  - COSE key type, algorithm and curve must be CBOR integers
+  - Malformed input is refused with a message of its own, without Perl
+    errors or warnings
+  - Reject credential IDs longer than 1023 bytes
+  - Refuse an attestation format that is not a text string
+  - An attestation certificate without Basic Constraints is refused as
+    such, not with a Perl error
+  - Looking up an unknown algorithm no longer adds it to the table of
+    supported algorithms
+  - Authen::WebAuthn::Test produces RSA, P-384, P-521 and Ed25519 keys,
+    packed self attestation, and packed and fido-u2f attestation with a
+    certificate
+
 0.005
   - Add allow_unknown_attestation_format option
 
