@@ -190,7 +190,7 @@ subtest "RSA key sizes" => sub {
         [
             $odd_n,
             "\x01" x 500_000,
-            qr/Invalid RSA key exponent/,
+            qr/RSA key exponent of 500000 bytes is too long \(max: 32\)/,
             "An exponent of 500 KB"
         ],
         [
@@ -258,6 +258,29 @@ subtest "Stored keys over the registration limit" => sub {
         "At sign-in, a signature it did not make is refused" );
     like( $@, qr/Webauthn signature was not valid/, "... as a bad signature" );
     unlike( $@, qr/too long/, "... not for the key's size" );
+
+    my $long_e = Authen::WebAuthn::Test::_canonical_cbor(
+        {
+            1  => 3,
+            3  => -257,
+            -1 => "\xc1" . ( "\x02" x 254 ) . "\x03",
+            -2 => "\x01" x 40
+        }
+    );
+    ok( !register( undef, with_key($long_e) ),
+        "An exponent of 40 bytes is refused at registration" );
+    like(
+        $@,
+        qr/RSA key exponent of 40 bytes is too long \(max: 32\)/,
+        "... with the expected message"
+    );
+    ok(
+        !authenticate(
+            undef, credential_pubkey_b64 => encode_base64url($long_e)
+        ),
+        "... and at sign-in its key is read"
+    );
+    like( $@, qr/Webauthn signature was not valid/, "... as a bad signature" );
 
     ok(
         eval {

@@ -273,6 +273,7 @@ my $COSE_KTY = { OKP => 1, ECC => 2, RSA => 3 };
 
 my $MIN_RSA_BITS = 2048;
 my $MAX_RSA_BITS = 4096;
+my $MAX_RSA_EXPONENT_BYTES = 32;
 
 sub _check_credential_public_key {
     my ($cose_raw) = @_;
@@ -293,6 +294,13 @@ sub _check_credential_public_key {
             _require_bytes( $cose_key->{-1}, "RSA key modulus" ) );
         croak("RSA key of $bits bits is too long (max: $MAX_RSA_BITS)")
           if $bits > $MAX_RSA_BITS;
+
+        ( my $e = _require_bytes( $cose_key->{-2}, "RSA key exponent" ) ) =~
+          s/^\x00+//;
+        croak(  "RSA key exponent of "
+              . length($e)
+              . " bytes is too long (max: $MAX_RSA_EXPONENT_BYTES)" )
+          if length($e) > $MAX_RSA_EXPONENT_BYTES;
     }
 
     eval { getPubKeyVerifier($cose_raw) };
@@ -868,9 +876,9 @@ sub parse_rsa_pem {
 # CryptX converts the key in time quadratic in its size, so an oversized key
 # is refused before it is read. This bound is the largest modulus CryptX
 # reads, and also applies to stored keys at sign-in; registration accepts
-# less ($MAX_RSA_BITS).
-my $MAX_STORED_RSA_BITS    = 8192;
-my $MAX_RSA_EXPONENT_BYTES = 32;
+# less ($MAX_RSA_BITS and $MAX_RSA_EXPONENT_BYTES).
+my $MAX_STORED_RSA_BITS           = 8192;
+my $MAX_STORED_RSA_EXPONENT_BYTES = 128;
 
 sub _rsa_bits {
     my ($modulus) = @_;
@@ -895,7 +903,7 @@ sub parse_rsa_cose {
     # Odd and at least 3 (RFC 8017, section 3.1)
     croak("Invalid RSA key exponent")
       if length($e) == 0
-      or length($e) > $MAX_RSA_EXPONENT_BYTES
+      or length($e) > $MAX_STORED_RSA_EXPONENT_BYTES
       or ord( substr( $e, -1 ) ) % 2 == 0
       or ( length($e) == 1 and ord($e) < 3 );
 

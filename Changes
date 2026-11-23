@@ -9,8 +9,8 @@ Unreleased
     indefinite lengths and duplicate map keys are refused
   - At registration, reject a credential public key that does not parse,
     whose key type does not match its algorithm, or an RSA key outside
-    2048 to 4096 bits. A stored RSA key is read up to 8192 bits at
-    sign-in.
+    2048 to 4096 bits or with an exponent over 32 bytes. A stored RSA key
+    is read up to 8192 bits, with an exponent up to 128 bytes, at sign-in.
   - COSE key type, algorithm and curve must be CBOR integers
   - Malformed input is refused with a message of its own, without Perl
     errors or warnings
