@@ -83,6 +83,13 @@ my $RAW_PERL_ERROR = qr/
   | \buninitialized\b
 /x;
 
+# An error can quote the corrupted bytes, which need not be valid UTF-8
+sub is_raw_error {
+    my ($error) = @_;
+    utf8::encode($error);
+    return $error =~ $RAW_PERL_ERROR;
+}
+
 my @warnings;
 $SIG{__WARN__} = sub { push @warnings, @_ };
 
@@ -245,15 +252,40 @@ subtest "Corrupted responses" => sub {
         register_raw(
             attestation_object => corrupt( $registration->{attestationObject} )
         );
-        push @raw_errors, $@ if $@ =~ $RAW_PERL_ERROR;
+        push @raw_errors, $@ if is_raw_error($@);
 
         my $data   = corrupt( $assertion->{response}->{authenticatorData} );
         my $result = authenticate_raw( authenticator_data => $data );
-        push @raw_errors, $@ if $@ =~ $RAW_PERL_ERROR;
+        push @raw_errors, $@ if is_raw_error($@);
         $altered_accepted++
           if $result
           and $data ne $assertion->{response}->{authenticatorData};
     }
+
+
+    # Random bytes seldom leave data that decodes to a value of the wrong
+    # type, so each byte is also rewritten as every other CBOR major type
+    # with the same argument
+    my $retyped = sub {
+        my ( $bytes, $try ) = @_;
+        for my $at ( 0 .. length($bytes) - 1 ) {
+            my $byte = ord substr( $bytes, $at, 1 );
+            for my $major ( grep { $_ != $byte >> 5 } 0 .. 7 ) {
+                my $copy = $bytes;
+                substr( $copy, $at, 1 ) = chr( ( $byte & 0x1f ) | $major << 5 );
+                $try->($copy);
+                push @raw_errors, $@ if is_raw_error($@);
+            }
+        }
+    };
+    $retyped->(
+        $registration->{attestationObject},
+        sub { register_raw( attestation_object => $_[0] ) }
+    );
+    $retyped->(
+        $assertion->{response}->{authenticatorData},
+        sub { authenticate_raw( authenticator_data => $_[0] ) }
+    );
 
     is_deeply( \@raw_errors, [], "Every refusal has its own message" );
     ok( !$altered_accepted, "No altered authenticator data is accepted" );
