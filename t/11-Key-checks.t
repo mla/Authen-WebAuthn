@@ -316,4 +316,22 @@ subtest "Unknown algorithms stay unknown" => sub {
     like( $unsupported->(), qr/^Unsupported algorithm -4242/, "After" );
 };
 
+subtest "An EC2 key without a curve" => sub {
+    my @warnings;
+    local $SIG{__WARN__} = sub { push @warnings, @_ };
+    ok(
+        !register(
+            undef,
+            with_key(
+                Authen::WebAuthn::Test::_canonical_cbor(
+                    { 1 => 2, 3 => -7, -2 => "\x01" x 32, -3 => "\x02" x 32 }
+                )
+            )
+        ),
+        "Refused"
+    );
+    like( $@, qr/Unsupported curve \(none\)/, "... with the expected message" );
+    is_deeply( \@warnings, [], "... and no warnings" );
+};
+
 done_testing();
