@@ -41,6 +41,10 @@ my %failures = (
     X509_STORE_CTX_init => qr/Cannot initialize X509 store context/,
 );
 
+# Net::SSLeay before 1.91 returns nothing from X509_STORE_CTX_init, so the
+# verifier cannot see it fail
+delete $failures{X509_STORE_CTX_init} if $Net::SSLeay::VERSION < 1.91;
+
 for my $function ( sort keys %failures ) {
     my $result = do {
         no strict 'refs';
