@@ -157,7 +157,7 @@ encountered.
 The credential public key is checked before registration succeeds: its key
 type must match its algorithm, it must parse, and an RSA key must be 2048 to
 4096 bits long. These limits are for new registrations: at sign-in, a stored
-RSA key is read up to 16384 bits.
+RSA key is read up to 8192 bits.
 
 This method croaks on errors. If the registration was successful, it returns a hashref with the following subkeys:
 

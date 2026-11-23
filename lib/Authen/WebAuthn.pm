@@ -866,9 +866,10 @@ sub parse_rsa_pem {
 }
 
 # CryptX converts the key in time quadratic in its size, so an oversized key
-# is refused before it is read. This bound is OpenSSL's, and also applies to
-# stored keys at sign-in; registration accepts less ($MAX_RSA_BITS).
-my $MAX_STORED_RSA_BITS    = 16384;
+# is refused before it is read. This bound is the largest modulus CryptX
+# reads, and also applies to stored keys at sign-in; registration accepts
+# less ($MAX_RSA_BITS).
+my $MAX_STORED_RSA_BITS    = 8192;
 my $MAX_RSA_EXPONENT_BYTES = 32;
 
 sub _rsa_bits {

@@ -260,13 +260,24 @@ subtest "Stored keys over the registration limit" => sub {
     unlike( $@, qr/too long/, "... not for the key's size" );
 
     ok(
+        eval {
+            Authen::WebAuthn::parse_rsa_cose(
+                { -1 => "\xc1" x 1024, -2 => "\x01\x00\x01" } );
+        },
+        "A stored key of 8192 bits is read"
+    ) or diag($@);
+    ok(
         !eval {
             Authen::WebAuthn::parse_rsa_cose(
-                { -1 => "\xc1" x 2049, -2 => "\x01\x00\x01" } );
+                { -1 => "\xc1" x 1025, -2 => "\x01\x00\x01" } );
         },
-        "A stored key over 16384 bits is refused"
+        "A stored key of 8200 bits is refused"
     );
-    like( $@, qr/too long \(max: 16384\)/, "... with the expected message" );
+    like(
+        $@,
+        qr/^RSA key of 8200 bits is too long \(max: 8192\)/,
+        "... with the expected message"
+    );
 };
 
 # A lookup of an algorithm a client names must not add it to the table of
