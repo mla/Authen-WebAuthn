@@ -11,6 +11,9 @@ use Authen::WebAuthn::Test;
 # Attestation signed with certificates from the test PKI in t/pki (see
 # t/pki/generate), through the simulator
 
+# The test PKI is valid from 2026-11-21 for 100 years
+$Authen::WebAuthn::SSLeayChainVerifier::verification_time = 1796083200;
+
 sub pem {
     my ($name) = @_;
     open my $fh, '<', "t/pki/$name.pem" or die "t/pki/$name.pem: $!";

@@ -348,6 +348,12 @@ subtest "Unknown algorithms stay unknown" => sub {
     like( $@, qr/Unknown key type in attestation data: -4242/,
         "... with the expected message" );
     like( $unsupported->(), qr/^Unsupported algorithm -4242/, "After" );
+
+    ok( !eval { Authen::WebAuthn::getCoseAlgAndLength($unknown) },
+        "Its algorithm and length are refused" );
+    like( $@, qr/^Unsupported algorithm -4242/, "... as unsupported" );
+    like( $unsupported->(), qr/^Unsupported algorithm -4242/,
+        "... and it is still unknown" );
 };
 
 subtest "An EC2 key without a curve" => sub {

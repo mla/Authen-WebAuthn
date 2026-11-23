@@ -5,6 +5,9 @@ use strict;
 
 use Authen::WebAuthn::SSLeayChainVerifier;
 
+# The test PKI is valid from 2026-11-21 for 100 years
+$Authen::WebAuthn::SSLeayChainVerifier::verification_time = 1796083200;
+
 # Each OpenSSL call the verifier makes can fail. Make one fail at a time and
 # check that the verifier reports it, and that verification still works
 # afterwards (a double free would usually crash here).
