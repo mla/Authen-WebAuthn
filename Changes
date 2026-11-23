@@ -21,6 +21,8 @@ Unreleased
     2048 to 4096 bits or with an exponent over 32 bytes. A stored RSA key
     is read up to 8192 bits, with an exponent up to 128 bytes, at sign-in.
   - COSE key type, algorithm and curve must be CBOR integers
+  - ES256 is refused with a key that is not on P-256: packed attestation
+    accepted an ES256 statement signed by a P-384 certificate key
   - Malformed input is refused with a message of its own, without Perl
     errors or warnings
   - Reject credential IDs longer than 1023 bytes

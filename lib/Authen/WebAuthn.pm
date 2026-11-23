@@ -43,6 +43,7 @@ my $COSE_ALG = {
     -7 => {
         name              => "ES256",
         key_type          => "ECC",
+        curve_name        => "secp256r1",
         signature_options => ["SHA256"]
     },
     -257 => {
@@ -973,6 +974,14 @@ sub get_verifier_for_alg {
     my $public_key = $key_function->($key_data);
     unless ($public_key) {
         croak "Could not parse public key";
+    }
+
+    # A certificate key says its curve only once read: ES256 with a P-384
+    # key is not ES256
+    if ( my $curve_name = $alg_config->{curve_name} ) {
+        my $key_curve = $public_key->key2hash->{curve_name} // "(none)";
+        croak "Curve $key_curve cannot be used with algorithm $alg_num"
+          unless $key_curve eq $curve_name;
     }
 
     my @signature_options = @{ $alg_config->{signature_options} };

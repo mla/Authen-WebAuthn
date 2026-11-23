@@ -1,5 +1,7 @@
 use Test::More;
 use Crypt::PK::ECC;
+use CBOR::XS;
+use Digest::SHA qw(sha256);
 use MIME::Base64 qw(encode_base64url);
 use strict;
 
@@ -179,6 +181,36 @@ subtest "Packed attestation signatures" => sub {
         ),
         qr/Cannot get signature validator for attestation/,
         "A certificate key of another type than the algorithm"
+    );
+
+    # ES256 is ECDSA on P-256: the same statement, named ES256 and signed
+    # with SHA-256 by the certificate's P-384 key
+    my $credential = authenticator( certificate => "packed-p384" )
+      ->get_credential_response( { request => { challenge => "abc" } } );
+    my $object =
+      CBOR::XS::decode_cbor( $credential->{response}->{attestationObject} );
+    my $p384 = Crypt::PK::ECC->new( \pem("packed-p384-key") );
+    $object->{attStmt}->{alg} = -7;
+    $object->{attStmt}->{sig} = $p384->sign_message(
+        $object->{authData}
+          . sha256( $credential->{response}->{clientDataJSON} ),
+        "SHA256"
+    );
+    my $result = eval {
+        $rp->validate_registration(
+            challenge_b64        => "abc",
+            client_data_json_b64 =>
+              encode_base64url( $credential->{response}->{clientDataJSON} ),
+            attestation_object_b64 => encode_base64url(
+                Authen::WebAuthn::Test::_canonical_cbor($object)
+            ),
+            trust_anchors => [ pem("root") ],
+        );
+    };
+    refused(
+        $result,
+        qr/Curve secp384r1 cannot be used with algorithm -7/,
+        "ES256 signed by a P-384 certificate key"
     );
 };
 
