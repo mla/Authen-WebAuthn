@@ -97,6 +97,25 @@ subtest "A trust anchor that is not a certificate" => sub {
     }
 };
 
+subtest "A certificate that does not parse" => sub {
+    for my $response ( \%packed, \%u2f ) {
+        my $format = $response == \%packed ? "packed" : "fido-u2f";
+        ok(
+            !register(
+                with_statement(
+                    $response,
+                    sub { $_[0]->{x5c} = ["\x30\x03\x02\x01\x01"] }
+                ),
+                trust_anchors => [$main::yubico_u2f_root],
+            ),
+            "Refused with $format"
+        );
+        like( $@, qr/Failed to validate attestation/, "... as such" );
+        is( Net::SSLeay::ERR_peek_error(), 0,
+            "... leaving OpenSSL's error queue empty" );
+    }
+};
+
 subtest "Packed attestation" => sub {
     ok(
         !register(

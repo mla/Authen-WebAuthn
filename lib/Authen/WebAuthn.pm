@@ -9,6 +9,7 @@ use Digest::SHA qw(sha256);
 use Crypt::PK::ECC;
 use Crypt::PK::RSA;
 use Crypt::OpenSSL::X509 2.1.3;
+use Net::SSLeay ();
 use B                 ();
 use Encode            ();
 use Types::Serialiser ();
@@ -213,7 +214,13 @@ sub validate_registration {
             $authenticator_data_raw, $client_data_hash
         );
     };
-    croak( "Failed to validate attestation: " . $@ ) if ($@);
+    my $attestation_error = $@;
+
+    # A certificate the client sent that does not parse leaves its errors in
+    # OpenSSL's queue, where the next TLS read in this process finds them
+    Net::SSLeay::ERR_clear_error();
+    croak( "Failed to validate attestation: " . $attestation_error )
+      if $attestation_error;
 
     unless ( $attestation_result->{success} == 1 ) {
         croak(

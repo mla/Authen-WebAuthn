@@ -36,6 +36,9 @@ Unreleased
   - Require Crypt::OpenSSL::X509 2.1.3: earlier versions crash on an
     attestation certificate whose Basic Constraints extension is not
     valid DER (CVE-2026-58101), which any client can send
+  - An attestation certificate that does not parse no longer leaves
+    errors in OpenSSL's error queue, where they could fail an unrelated
+    TLS read in the same process
   - An attestation certificate without Basic Constraints is refused as
     such, not with a Perl error
   - Looking up an unknown algorithm no longer adds it to the table of
