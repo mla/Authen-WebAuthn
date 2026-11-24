@@ -2,7 +2,7 @@ use Test::More;
 use Crypt::PK::ECC;
 use CBOR::XS;
 use Digest::SHA qw(sha256);
-use MIME::Base64 qw(encode_base64url);
+use MIME::Base64 qw(encode_base64 encode_base64url);
 use strict;
 
 use Authen::WebAuthn;
@@ -126,9 +126,17 @@ subtest "AAGUID extension" => sub {
 subtest "Chain verifier input that does not parse" => sub {
     my $der = Crypt::OpenSSL::X509->new_from_string( pem("packed-p256") )
       ->as_string(Crypt::OpenSSL::X509::FORMAT_ASN1);
+
+    # A truncated DER sequence queues several errors: reading the message
+    # takes only one of them
+    my $truncated = "\x30\x03\x02\x01\x01";
+    my $truncated_pem =
+        "-----BEGIN CERTIFICATE-----\n"
+      . encode_base64($truncated)
+      . "-----END CERTIFICATE-----\n";
     for my $case (
-        [ [ pem("root") ], "garbage", "A certificate" ],
-        [ [ pem("root"), "garbage" ], $der, "The second of two anchors" ],
+        [ [ pem("root") ], $truncated, "A certificate" ],
+        [ [ pem("root"), $truncated_pem ], $der, "The second of two anchors" ],
       )
     {
         my ( $anchors, $leaf, $name ) = @$case;
