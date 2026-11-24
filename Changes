@@ -9,10 +9,12 @@ Unreleased
   - Decode client-supplied CBOR with a decoder for the subset WebAuthn
     uses: tags (which could instantiate Perl objects or expand to
     gigabytes), floats, undefined, indefinite lengths, integers of 2^53
-    or more, duplicate map keys and map keys that are neither integers
-    nor text strings are refused, as is data holding more than 10,000
-    items or nested more than 16 deep, which bounds the memory a response
-    can take
+    or more, text strings that are not valid UTF-8, duplicate map keys,
+    and map keys that are neither integers nor text strings or are text
+    that reads as an integer are refused, as is data holding more than
+    10,000 items or nested more than 16 deep, which bounds the memory
+    CBOR data can take. A member WebAuthn defines as a byte string
+    (authenticator data, signatures, key coordinates) is refused as text.
   - The stored credential public key given to validate_assertion is read
     by the same decoder, so it must be CBOR as an authenticator writes it,
     which the credential_pubkey returned by validate_registration is. A
@@ -21,7 +23,8 @@ Unreleased
   - At registration, reject a credential public key that does not parse,
     whose key type does not match its algorithm, or an RSA key outside
     2048 to 4096 bits or with an exponent over 32 bytes. A stored RSA key
-    is read up to 8192 bits, with an exponent up to 128 bytes, at sign-in.
+    is read up to 8192 bits, with an exponent up to 128 bytes, at sign-in,
+    and refused if its modulus is even or its exponent is even or under 3.
   - COSE key type, algorithm and curve must be CBOR integers
   - ES256 is refused with a key that is not on P-256: packed attestation
     accepted an ES256 statement signed by a P-384 certificate key
@@ -44,7 +47,9 @@ Unreleased
   - Looking up an unknown algorithm no longer adds it to the table of
     supported algorithms
   - Authen::WebAuthn::Test produces RSA keys, packed self attestation,
-    and packed and fido-u2f attestation with a certificate
+    and packed and fido-u2f attestation with a certificate. It writes the
+    attestation format as a text string and its maps in CTAP2 canonical
+    order, as authenticators do.
 
 0.005
   - Add allow_unknown_attestation_format option
