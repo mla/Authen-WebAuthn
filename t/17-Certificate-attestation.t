@@ -157,6 +157,7 @@ subtest "Certificate requirements" => sub {
         "bad-ou"    => qr/Unexpected OU/,
         "bad-ca"    => qr/Basic Constraints CA is true/,
         "bad-no-bc" => qr/Missing Basic Constraints extension/,
+        "bad-bc-der" => qr/Error parsing basicConstraints extension/,
     );
     for my $certificate ( sort keys %expected ) {
         refused( register( authenticator( certificate => $certificate ) ),

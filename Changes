@@ -33,6 +33,9 @@ Unreleased
     it, or an array, was accepted before
   - Refuse an attestation format that is not a text string, and an
     attestation statement that is not a map, with the none format too
+  - Require Crypt::OpenSSL::X509 2.1.3: earlier versions crash on an
+    attestation certificate whose Basic Constraints extension is not
+    valid DER (CVE-2026-58101), which any client can send
   - An attestation certificate without Basic Constraints is refused as
     such, not with a Perl error
   - Looking up an unknown algorithm no longer adds it to the table of

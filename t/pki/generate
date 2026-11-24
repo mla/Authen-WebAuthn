@@ -64,4 +64,8 @@ cert bad-ca    p256 "$subject/CN=Bad CA" root "basicConstraints=critical,CA:TRUE
 cert bad-no-bc p256 "$subject/CN=Bad no Basic Constraints" root "subjectKeyIdentifier=hash"
 cert bad-v1    p256 "$subject/CN=Bad version 1" root ""
 
+# Crashed Crypt::OpenSSL::X509 before 2.1.3 (CVE-2026-58101)
+cert bad-bc-der p256 "$subject/CN=Bad Basic Constraints encoding" root \
+    "basicConstraints=DER:01:02:03:04"
+
 rm -f -- *.srl
