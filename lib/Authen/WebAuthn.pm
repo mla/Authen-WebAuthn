@@ -82,8 +82,9 @@ sub validate_registration {
         )
       };
 
-    my $client_data_json = decode_base64url($client_data_json_b64);
-    my $client_data      = _decode_client_data($client_data_json);
+    my $client_data_json =
+      _decode_parameter( $client_data_json_b64, "client_data_json_b64" );
+    my $client_data = _decode_client_data($client_data_json);
 
     # 7. Verify that the value of C.type is webauthn.create
     unless ( ( $client_data->{type} // "" ) eq "webauthn.create" ) {
@@ -344,15 +345,21 @@ sub validate_assertion {
     # inappropriate for your use case), look up the corresponding credential
     # public key and let credentialPublicKey be that credential public key.
     my $credential_verifier =
-      eval { getPubKeyVerifier( decode_base64url($credential_pubkey_b64) ) };
+      eval {
+        getPubKeyVerifier(
+            _decode_parameter( $credential_pubkey_b64, "credential_pubkey_b64" )
+        );
+      };
     croak "Cannot get signature validator for assertion: $@" if ($@);
 
     # 8. Let cData, authData and sig denote the value of response’s
     # clientDataJSON, authenticatorData, and signature respectively.
-    my $client_data_json       = decode_base64url($client_data_json_b64);
-    my $authenticator_data_raw = decode_base64url($authenticator_data_b64);
+    my $client_data_json =
+      _decode_parameter( $client_data_json_b64, "client_data_json_b64" );
+    my $authenticator_data_raw =
+      _decode_parameter( $authenticator_data_b64, "authenticator_data_b64" );
     my $authenticator_data     = getAuthData($authenticator_data_raw);
-    my $signature              = decode_base64url($signature_b64);
+    my $signature = _decode_parameter( $signature_b64, "signature_b64" );
 
     # 9. Let JSONtext be the result of running UTF-8 decode on the value of
     # cData.
@@ -598,7 +605,7 @@ sub _check_cose_key {
     _require_map( $cose, "Credential public key" );
     my @labels = ( 1, 3 );
     push @labels, -1
-      if defined $cose->{1} and ( $cose->{1} eq "1" or $cose->{1} eq "2" );
+      if defined $cose->{1} and $cose->{1} eq "2";
     for my $label (@labels) {
         my $value = $cose->{$label};
         next unless defined $value;
@@ -610,11 +617,17 @@ sub _check_cose_key {
     return $cose;
 }
 
+sub _decode_parameter {
+    my ( $value, $name ) = @_;
+    croak("Missing $name") unless defined $value;
+    return decode_base64url($value);
+}
+
 # The client data members compared here must be strings
 sub _decode_client_data {
     my ($client_data_json) = @_;
 
-    my $client_data = eval { decode_json( $client_data_json // "" ) };
+    my $client_data = eval { decode_json($client_data_json) };
     if ($@) {
         croak("Error deserializing client data: $@");
     }
@@ -1145,7 +1158,7 @@ sub resolveFlags {
 
 sub getAttestationObject {
     my ($dat)   = @_;
-    my $decoded = decode_base64url($dat);
+    my $decoded = _decode_parameter( $dat, "attestation_object_b64" );
     my $res     = {};
     my $h       = _require_map( _decode_cbor($decoded), "Attestation object" );
     _require_text( $h->{fmt}, "Attestation statement format" );
@@ -1401,10 +1414,9 @@ sub attest_u2f {
     };
     croak "Could not extract ECC key from attestation certificate: $@" if ($@);
 
-    if ( $attestation_key->key2hash->{curve_name} ne "secp256r1" ) {
-        croak "Invalid attestation certificate curve name: "
-          . $attestation_key->key2hash->{curve_name};
-    }
+    my $curve = $attestation_key->key2hash->{curve_name} // "(none)";
+    croak "Invalid attestation certificate curve name: $curve"
+      unless $curve eq "secp256r1";
 
     # 3. Extract the claimed rpIdHash from authenticatorData, and the claimed
     # credentialId and credentialPublicKey from

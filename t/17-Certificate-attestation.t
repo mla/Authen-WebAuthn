@@ -246,6 +246,21 @@ subtest "FIDO U2F attestation" => sub {
         qr/Invalid attestation certificate curve name: secp384r1/,
         "With a P-384 certificate"
     );
+    {
+        my @warnings;
+        local $SIG{__WARN__} = sub { push @warnings, @_ };
+        refused(
+            register(
+                authenticator(
+                    certificate        => "u2f-unnamed-curve",
+                    attestation_format => "fido-u2f"
+                )
+            ),
+            qr/Invalid attestation certificate curve name: \(none\)/,
+            "With a certificate on a curve that has no name"
+        );
+        is_deeply( \@warnings, [], "... without warnings" );
+    }
     refused(
         register(
             authenticator(

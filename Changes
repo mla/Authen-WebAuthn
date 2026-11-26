@@ -29,7 +29,7 @@ Unreleased
   - ES256 is refused with a key that is not on P-256: packed attestation
     accepted an ES256 statement signed by a P-384 certificate key
   - Malformed input is refused with a message of its own, without Perl
-    errors or warnings
+    errors or warnings, and a missing parameter is named
   - Reject credential IDs longer than 1023 bytes
   - Authenticator data whose extension data flag is set must hold
     extension data, and it must be a CBOR map: a flag with nothing after

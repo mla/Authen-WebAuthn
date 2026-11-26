@@ -292,6 +292,43 @@ subtest "Corrupted responses" => sub {
     ok( !$altered_accepted, "No altered authenticator data is accepted" );
 };
 
+subtest "A missing parameter" => sub {
+    my %registration = (
+        challenge_b64        => "abc",
+        client_data_json_b64 =>
+          encode_base64url( $registration->{clientDataJSON} ),
+        attestation_object_b64 =>
+          encode_base64url( $registration->{attestationObject} ),
+    );
+    my %assertion = (
+        challenge_b64         => "def",
+        credential_pubkey_b64 =>
+          encode_base64url( $authenticator->encode_cosekey ),
+        stored_sign_count    => 0,
+        client_data_json_b64 =>
+          encode_base64url( $assertion->{response}->{clientDataJSON} ),
+        authenticator_data_b64 =>
+          encode_base64url( $assertion->{response}->{authenticatorData} ),
+        signature_b64 =>
+          encode_base64url( $assertion->{response}->{signature} ),
+    );
+    my @cases = (
+        ( map { [ validate_registration => \%registration, $_ ] }
+              qw(client_data_json_b64 attestation_object_b64) ),
+        ( map { [ validate_assertion => \%assertion, $_ ] }
+              qw(credential_pubkey_b64 client_data_json_b64
+              authenticator_data_b64 signature_b64) ),
+    );
+    for my $case (@cases) {
+        my ( $method, $parameters, $name ) = @$case;
+        my $before = @warnings;
+        ok( !eval { $rp->$method( %$parameters, $name => undef ) },
+            "$method without $name is refused" );
+        like( $@, qr/Missing $name/, "... as missing" );
+        is( scalar @warnings, $before, "... without warnings" );
+    }
+};
+
 subtest "Token binding without a status" => sub {
     my $with_binding = sub {
         my ($json) = @_;
